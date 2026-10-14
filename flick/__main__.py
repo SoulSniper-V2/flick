@@ -6,6 +6,7 @@ import json
 import sys
 
 from . import __version__
+from .bench import run as run_bench
 from .loop import run_goal
 from .phone import chrome, elements, status
 
@@ -28,7 +29,7 @@ def cmd_see() -> int:
 
 
 def cmd_goal(goal: str, steps: int) -> int:
-    print(json.dumps(run_goal(goal, steps), indent=2))
+    print(json.dumps(run_goal(goal, steps), indent=2), flush=True)
     return 0
 
 
@@ -38,6 +39,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("status").set_defaults(fn=lambda a: cmd_status())
     sub.add_parser("see").set_defaults(fn=lambda a: cmd_see())
+    sub.add_parser("bench").set_defaults(fn=lambda a: (print(json.dumps(run_bench(), indent=2)) or 0))
     g = sub.add_parser("goal")
     g.add_argument("goal")
     g.add_argument("--steps", type=int, default=8)

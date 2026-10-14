@@ -1,31 +1,31 @@
 ---
 name: flick
-description: Drive a real iPhone from an agent. Clef or Jev pick each tap from the accessibility tree. Use when the user wants the phone controlled, a demo recorded, or this skill installed.
+description: Drive a real iPhone. Jev or Clef pick each tap from a closed list. Use when the user wants the phone controlled, this skill installed, or a goal run on the device.
 ---
 
 # flick
 
-The phone is controlled by a closed decision, not by you guessing coordinates. Clef or Jev pick the next tap. You do not send, like, follow, reply, or pay.
+You do not guess coordinates. You do not take a photo per tap. Jev picks the next action from the labels on screen. Clef is the fallback. Send, like, follow, reply, and pay are refused before the tap.
 
-## Install this skill
+Repo: https://github.com/SoulSniper-V2/flick
+
+## Install the skill
 
 ```bash
 npx skills add SoulSniper-V2/flick -g -y
 ```
 
-That clones nothing by itself. After the skill is installed, clone the repo the tools live in:
+Then clone the tools. The skill file is instructions. The CLI and MCP live in the repo.
 
 ```bash
 gh repo clone SoulSniper-V2/flick ~/Projects/flick
 ```
 
-Repo: https://github.com/SoulSniper-V2/flick
-
 ## Set up the phone
 
-Do this on the Mac the iPhone is plugged into. Ask the person before running the installer. Keep the phone unlocked.
+Do this on the Mac the iPhone is plugged into. Ask before installing. The phone must be unlocked, screen on, cable in.
 
-1. If `iphone-use` is missing, install it:
+1. If `iphone-use` is not on the PATH:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/leeguooooo/iphone-use/main/install.sh | bash
@@ -33,24 +33,31 @@ iphone-use doctor
 iphone-use setup
 ```
 
-2. Ask the person for three values if they are not already in the environment. Never invent them, never write them into the repo, never echo them back.
+2. Ask the person for these if they are not already exported. Never invent a key. Never write one into the repo. Never repeat a key back.
 
-- `JEV_KEY` (or `TYPESAFE_API_KEY`)
+- `JEV_KEY` or `TYPESAFE_API_KEY`
 - `CF_ACCOUNT`
-- `CF_TOKEN` (or `CLOUDFLARE_API_TOKEN`)
+- `CF_TOKEN` or `CLOUDFLARE_API_TOKEN`
 
-3. Check the phone:
+3. Prove it:
 
 ```bash
 cd ~/Projects/flick
 python3 -m flick status
+python3 -m flick bench
 ```
 
-`drivable` must be true. If it says parked, the person unlocks the phone and you run `iphone-use setup` again only if status stays down.
+`status` must say drivable. `bench` must show Jev and the Clef models choosing `tap_theo` on a frozen screen. That bench does not touch the phone.
 
-## Use it
+4. Tell the person to set Auto-Lock to Never while a run is live. A 30 second lock makes the runner refuse screen reads. The passcode cannot be entered from the Mac. If `status` says unlock in hand, stop and ask. Do not retry in a loop.
 
-MCP, for an agent that can load a stdio server:
+## Run a goal
+
+```bash
+python3 -m flick goal "On X, open Theo's post about the T3 Code /goal flow and show the comments."
+```
+
+MCP, if the host can load a stdio server:
 
 ```json
 {
@@ -58,7 +65,12 @@ MCP, for an agent that can load a stdio server:
     "flick": {
       "command": "python3",
       "args": ["-m", "flick.mcp_server"],
-      "cwd": "/Users/YOU/Projects/flick"
+      "cwd": "/Users/YOU/Projects/flick",
+      "env": {
+        "JEV_KEY": "${JEV_KEY}",
+        "CF_ACCOUNT": "${CF_ACCOUNT}",
+        "CF_TOKEN": "${CF_TOKEN}"
+      }
     }
   }
 }
@@ -66,16 +78,12 @@ MCP, for an agent that can load a stdio server:
 
 Tools: `phone_status`, `phone_see`, `phone_goal`.
 
-Or from the terminal:
+## How a step works
 
-```bash
-python3 -m flick goal "On X, open Theo's post about the T3 Code /goal flow and show the comments. Do not like, follow, or reply."
-```
+The tree comes back as short labels. Jev gets a closed list: launch X, type `t3.gg`, tap a ranked control, scroll, back, done. Compose, Follow, Like, and Reply are not in the list. A step is one model call, about 150 ms for Jev and 270 to 460 ms for the Clef models, plus the phone. Eight questions are not slower than one. Do not add a second call to be sure.
 
-Each step is one Jev call (Clef-omni if Jev is unset). The model sees the short labels, not a photo, unless you later pass an image with `TypeSafe-Danger-Zone-Images: true`. A send, like, follow, or reply is refused in code before the tap.
+Jev can see a photo only with the header `TypeSafe-Danger-Zone-Images: true` and an `assets` map. Use that when a control has no label. Do not use it as the default. Clef-omni takes a JPEG in `images` without that header.
 
-## What this is not
+## Stop
 
-This cut still needs the Mac daemon. After the first USB setup the runner can stay on Wi-Fi until reboot, lock, or the signing lease. An on-phone app you prompt with no Mac in the room is a different program and is not shipped here. Do not tell the person it is.
-
-Do not open Mail or Messages unless they asked. Do not check out of a cart. Do not post.
+Do not open Mail or Messages unless asked. Do not check out. Do not post. If the same action repeats twice, stop and read the screen. If the runner says the screen cannot be read, the phone is asleep or locked from the Mac's side even if it looks awake to the person. Ask them to tap the screen and leave it on.
