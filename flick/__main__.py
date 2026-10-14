@@ -1,13 +1,13 @@
-"""flick — open apps on a real iPhone and print how long it took. No screenshots."""
+"""flick — Clef or Jev pick the taps. No screenshot per step."""
 from __future__ import annotations
 
 import argparse
 import json
 import sys
-import time
 
 from . import __version__
-from .phone import chrome, elements, has, home, launch, status
+from .loop import run_goal
+from .phone import chrome, elements, status
 
 
 def cmd_status() -> int:
@@ -27,61 +27,23 @@ def cmd_see() -> int:
     return 0
 
 
-def _open(name: str, marker: str) -> dict:
-    t0 = time.perf_counter()
-    code, launch_ms, body = launch(name)
-    tree_ms = 0.0
-    els: list[dict] = []
-    deadline = time.perf_counter() + 3.0
-    while time.perf_counter() < deadline:
-        tree_ms, els = elements()
-        if has(els, marker):
-            break
-        time.sleep(0.25)
-    return {
-        "app": name,
-        "ok": code == 200 and bool(body.get("ok")) and has(els, marker),
-        "launch_ms": round(launch_ms),
-        "tree_ms": round(tree_ms),
-        "wall_ms": round((time.perf_counter() - t0) * 1000),
-        "marker": marker,
-        "saw": has(els, marker),
-        "error": body.get("error"),
-    }
-
-
-def cmd_demo() -> int:
-    st = status()
-    if not st.get("drivable"):
-        print(json.dumps({"stopped": True, "why": st.get("hint") or st.get("device_state")}))
-        return 1
-    t0 = time.perf_counter()
-    rows = [
-        _open("Weather", "Weather"),
-        _open("Clock", "Clock"),
-        _open("Calendar", "Calendar"),
-    ]
-    home_code, home_ms, _ = home()
-    total = round((time.perf_counter() - t0) * 1000)
-    print(json.dumps({
-        "steps": rows,
-        "home_ms": round(home_ms),
-        "home_ok": home_code == 200,
-        "total_ms": total,
-        "photos": 0,
-    }, indent=2))
-    return 0 if all(row["ok"] for row in rows) else 2
+def cmd_goal(goal: str, steps: int) -> int:
+    print(json.dumps(run_goal(goal, steps), indent=2))
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="flick")
     parser.add_argument("--version", action="version", version=__version__)
     sub = parser.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("status").set_defaults(fn=cmd_status)
-    sub.add_parser("see").set_defaults(fn=cmd_see)
-    sub.add_parser("demo").set_defaults(fn=cmd_demo)
+    sub.add_parser("status").set_defaults(fn=lambda a: cmd_status())
+    sub.add_parser("see").set_defaults(fn=lambda a: cmd_see())
+    g = sub.add_parser("goal")
+    g.add_argument("goal")
+    g.add_argument("--steps", type=int, default=8)
+    g.set_defaults(fn=lambda a: cmd_goal(a.goal, a.steps))
     args = parser.parse_args(argv)
-    return args.fn()
+    return args.fn(args)
 
 
 if __name__ == "__main__":

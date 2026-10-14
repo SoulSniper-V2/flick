@@ -54,10 +54,14 @@ def status() -> dict:
 
 
 def elements() -> tuple[float, list[dict]]:
-    code, ms, body = call("/agent/elements", timeout=45)
-    if code != 200:
-        raise RuntimeError(body.get("error") or f"elements {code}")
-    return ms, body.get("elements") or []
+    last = ""
+    for _ in range(3):
+        code, ms, body = call("/agent/elements", timeout=50)
+        if code == 200 and body.get("elements") is not None and "error" not in body:
+            return ms, body.get("elements") or []
+        last = str(body.get("error") or body)[:180]
+        time.sleep(float(body.get("retry_after_secs") or 2))
+    raise RuntimeError(last or "elements failed")
 
 
 def launch(name: str) -> tuple[int, float, dict]:
